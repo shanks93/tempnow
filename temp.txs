@@ -1,0 +1,36 @@
+STAUTDEF corePQ_STAUT [ Inp :: QueueOp; Outp :: Int ] ( )
+  ::=
+    STATE
+        qstate, qout
+    VAR
+        buf :: IntList
+    INIT
+        qstate { buf := Nil }
+    TRANS
+        qstate  ->  Inp ? qop [[ isDeq(qop) /\ not(isNil(buf)) ]]  ->  qout
+        qout  ->  Outp ? val [[ premax(val,buf) ]] { buf := remove(val,buf) }  ->  qstate
+        qstate  ->  Inp ? qop [[ isEnq(qop) ]] { buf := add(val(qop),buf) }  ->  qstate
+        qstate  ->  Inp ? qop [[ isDeq(qop) /\ isNil(buf) ]]  ->  qstate
+ENDDEF
+
+
+STAUTDEF corePQ_STAUT [ PubInp1, PubInp2, PubInp3, SubInp, SubOutp :: Operation] () EXIT
+    ::=
+        STATE
+            qstate, qout, end
+        VAR
+            buf :: IntList
+        INIT
+            qstate { buf := Nil }
+        TRANS
+            qstate  ->      PubInp1 ? qop [[ isEnq(qop) ]] { buf := add(val(qop), buf) }    ->  qstate
+            qstate  ->      PubInp2 ? qop [[ isEnq(qop) ]] { buf := add(val(qop), buf) }    ->  qstate
+            qstate  ->      PubInp3 ? qop [[ isEnq(qop) ]] { buf := add(val(qop), buf) }    ->  qstate
+            qstate  ->      SubInp ? qop [[ isDeq(qop) /\ isNil(buf) ]]                     ->  qstate
+            qstate  ->      SubInp ? qop [[ isDeq(qop) /\ not(isNil(buf)) ]]                ->  qout
+            qout    ->      SubOutp ? r [[  IF isPrioVal(buf, premax(val,buf))
+                                            THEN removeFromList(val, buf)
+                                            ELSE hd(buf)
+                                            FI ]] { buf := tl(buf) }                        ->  qstate
+            qstate  ->      EXIT  {}                                                        -> end                
+ENDDEF
